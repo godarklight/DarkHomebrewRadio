@@ -246,7 +246,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkProgressBar">
+                  <object class="GtkProgressBar" id="progressSWR">
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
                   </object>
@@ -294,7 +294,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkProgressBar">
+                  <object class="GtkProgressBar" id="progressALC">
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
                   </object>

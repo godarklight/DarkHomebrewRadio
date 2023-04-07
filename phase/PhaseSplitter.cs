@@ -9,7 +9,7 @@ namespace DarkHomebrewRadio.Phase
 {
     class PhaseSplitter
     {
-        private const int SAMPLES_PER_FFT = 8192;
+        public const int SAMPLES_PER_FFT = 8192;
         bool running = true;
         public bool transmit = false;
         bool isTransmitting = false;
@@ -26,6 +26,8 @@ namespace DarkHomebrewRadio.Phase
         AutoResetEvent fftARE = new AutoResetEvent(false);
         Thread ifftThread;
         AutoResetEvent ifftARE = new AutoResetEvent(false);
+        public Action<Complex[]> audioFilter;
+        public Action<double> alcEvent;
 
         public PhaseSplitter()
         {
@@ -50,8 +52,11 @@ namespace DarkHomebrewRadio.Phase
                 double[] newSource = new double[source.Length];
                 Array.Copy(source, 0, newSource, 0, SAMPLES_PER_FFT);
                 sourceWritePos = 0;
-                inputBuffers.Enqueue(newSource);
-                fftARE.Set();
+                if (transmit)
+                {
+                    inputBuffers.Enqueue(newSource);
+                    fftARE.Set();
+                }
             }
         }
 
@@ -61,14 +66,18 @@ namespace DarkHomebrewRadio.Phase
             {
                 isTransmitting = transmit;
                 Array.Clear(data);
+                inputBuffers.Clear();
+                outputBuffers.Clear();
+                fftBuffers.Clear();
             }
             if (transmit && !isTransmitting)
             {
                 //Give us some headroom
-                if (outputBuffers.Count > 3)
+                if (outputBuffers.Count > 0)
                 {
                     isTransmitting = true;
                 }
+
             }
 
             if (isTransmitting)
@@ -107,16 +116,17 @@ namespace DarkHomebrewRadio.Phase
 
         private void FFTThread()
         {
+            Complex[] inDataComplex = new Complex[SAMPLES_PER_FFT * 2];
             while (running)
             {
                 fftARE.WaitOne(100);
                 if (inputBuffers.TryDequeue(out double[] inputData))
                 {
-                    Complex[] inDataComplex = new Complex[inputData.Length * 2];
                     for (int i = 0; i < inputData.Length; i++)
                     {
                         //Cast
-                        inDataComplex[i] = inputData[i];
+                        inDataComplex[i] = inDataComplex[i + SAMPLES_PER_FFT];
+                        inDataComplex[i + SAMPLES_PER_FFT] = inputData[i];
                     }
 
                     Complex[] fftCalc = FFT.CalcFFT(inDataComplex);
@@ -144,6 +154,10 @@ namespace DarkHomebrewRadio.Phase
                     }
 
                     //Filtering here
+                    if (audioFilter != null)
+                    {
+                        audioFilter(fftCalc);
+                    }
 
                     //Signal IFFT
                     fftBuffers.Enqueue(fftCalc);
@@ -154,25 +168,36 @@ namespace DarkHomebrewRadio.Phase
 
         private void IFFTThread()
         {
-            Complex[] lastIFFT = null;
+            Complex[] lastIFFT = new Complex[SAMPLES_PER_FFT * 2];
             while (running)
             {
                 ifftARE.WaitOne(100);
                 if (fftBuffers.TryDequeue(out Complex[] fftData))
                 {
                     Complex[] ifft = FFT.CalcIFFT(fftData);
-                    if (lastIFFT != null)
+                    //Stereo
+                    double[] outputData = new double[SAMPLES_PER_FFT * 2];
+                    double newAlc = 0;
+                    for (int i = 0; i < SAMPLES_PER_FFT; i++)
                     {
-                        //Stereo
-                        double[] outputData = new double[SAMPLES_PER_FFT * 2];
-                        for (int i = 0; i < SAMPLES_PER_FFT; i++)
+                        //Overlap and save
+                        double scale = i / (double)SAMPLES_PER_FFT;
+                        Complex fromPoint = lastIFFT[i + SAMPLES_PER_FFT] * (1.0 - scale);
+                        Complex toPoint = ifft[i] * scale;
+                        Complex combined = fromPoint + toPoint;
+                        double magnitude = combined.Magnitude;
+                        if (magnitude > newAlc)
                         {
-                            //Overlap and save
-                            outputData[i * 2] = lastIFFT[i + (SAMPLES_PER_FFT)].Real + ifft[i].Real;
-                            outputData[i * 2 + 1] = lastIFFT[i + (SAMPLES_PER_FFT)].Imaginary + ifft[i].Imaginary;
+                            newAlc = magnitude;
                         }
-                        outputBuffers.Enqueue(outputData);
+                        outputData[i * 2] = combined.Real;
+                        outputData[i * 2 + 1] = combined.Imaginary;
                     }
+                    if (alcEvent != null)
+                    {
+                        alcEvent(newAlc);
+                    }
+                    outputBuffers.Enqueue(outputData);
                     lastIFFT = ifft;
                 }
             }
