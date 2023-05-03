@@ -58,12 +58,12 @@ namespace DarkHomebrewRadio.Audio
             inParam.channelCount = 2;
             inParam.device = inputDevice;
             inParam.sampleFormat = SampleFormat.Float32;
-            inParam.suggestedLatency = 0.01;
+            inParam.suggestedLatency = 0.05;
             StreamParameters outParam = new StreamParameters();
             outParam.channelCount = 2;
             outParam.device = outputDevice;
             outParam.sampleFormat = SampleFormat.Float32;
-            outParam.suggestedLatency = 0.01;
+            outParam.suggestedLatency = 0.05;
             audioStream = new Stream(inParam, outParam, 48000, 0, StreamFlags.NoFlag, AudioCallback, null);
             audioStream.Start();
         }

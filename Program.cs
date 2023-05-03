@@ -1,6 +1,7 @@
 using DarkHomebrewRadio.Audio;
 using DarkHomebrewRadio.Phase;
 using DarkHomebrewRadio.Serial;
+using DarkHomebrewRadio.Vfo;
 using System;
 using Gtk;
 
@@ -12,15 +13,16 @@ namespace DarkHomebrewRadio
         [STAThread]
         public static void Main(string[] args)
         {
+            Options options = new Options(args);
             PortAudioSharp.PortAudio.Initialize();
-            AudioDriver defaultAudio = new AudioDriver("default", 256);
-            AudioFilter audioFilter = new AudioFilter(48000, PhaseSplitter.SAMPLES_PER_FFT, 50, 250, 2800, 3000);
+            AudioDriver defaultAudio = new AudioDriver("default", 1024);
             //AudioDriver radioAudio = new AudioDriver("Radio_virtual", 256);
-            PhaseSplitter splitter = new PhaseSplitter();
-            splitter.audioFilter = audioFilter.Filter;
+
+            PhaseSplitter splitter = new PhaseSplitter(options);
             defaultAudio.sourceEvent = splitter.SourceEvent;
             defaultAudio.sinkEvent = splitter.SinkEvent;
-            SerialDriver swr = new SerialDriver();
+            SerialDriver swr = null;
+            PiAD9854 vfo = null;
 
             Application.Init();
 
@@ -31,9 +33,34 @@ namespace DarkHomebrewRadio
             app.AddWindow(win);
 
             win.Show();
-            win.pttEvent = splitter.UpdateTransmit;
+            win.pttEvent += splitter.UpdateTransmit;
             splitter.alcEvent = win.ALCEvent;
-            swr.SwrEvent = win.SWREvent;
+            if (options.swrEnabled)
+            {
+                swr = new SerialDriver(win.UpdateSWROK, win.SWREvent);
+            }
+            if (options.vfoEnabled)
+            {
+                vfo = new PiAD9854(win.UpdateVFOOK, options);
+                win.vfoEvent += vfo.SetFrequency;
+                win.vfoResetEvent += vfo.Reset;
+                win.pttEvent += vfo.PTTEvent;
+            }
+            win.modeEvent += splitter.UpdateMode;
+            win.micChangedEvent += splitter.MicEvent;
+            win.DeleteEvent += (object sender, DeleteEventArgs e) =>
+            {
+                if (options.vfoEnabled)
+                {
+                    vfo.Stop();
+                }
+                if (options.swrEnabled)
+                {
+                    swr.Stop();
+                }
+                splitter.Stop();
+                defaultAudio.Stop();
+            };
             Application.Run();
         }
     }

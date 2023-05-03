@@ -3,26 +3,36 @@
 <interface>
   <requires lib="gtk+" version="3.18"/>
   <object class="GtkAdjustment" id="adjustMic">
-    <property name="upper">100</property>
+    <property name="lower">-10</property>
+    <property name="upper">10</property>
     <property name="step-increment">1</property>
     <property name="page-increment">10</property>
   </object>
   <object class="GtkAdjustment" id="adjustNotch">
     <property name="upper">4000</property>
+    <property name="value">2000</property>
     <property name="step-increment">1</property>
     <property name="page-increment">10</property>
   </object>
   <object class="GtkAdjustment" id="adjustPBTI">
     <property name="upper">100</property>
+    <property name="value">50</property>
     <property name="step-increment">1</property>
     <property name="page-increment">10</property>
   </object>
   <object class="GtkAdjustment" id="adjustPBTO">
     <property name="upper">100</property>
+    <property name="value">50</property>
     <property name="step-increment">1</property>
     <property name="page-increment">10</property>
   </object>
   <object class="GtkAdjustment" id="adjustVFO">
+    <property name="upper">30000</property>
+    <property name="value">7132</property>
+    <property name="step-increment">1</property>
+    <property name="page-increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="adjustVFO2">
     <property name="upper">30000</property>
     <property name="value">7132</property>
     <property name="step-increment">1</property>
@@ -63,7 +73,7 @@
               <object class="GtkSpinButton" id="spinVfoB">
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
-                <property name="adjustment">adjustVFO</property>
+                <property name="adjustment">adjustVFO2</property>
                 <property name="digits">3</property>
                 <property name="value">7132</property>
               </object>
@@ -355,6 +365,7 @@
                 <property name="can-focus">False</property>
                 <child>
                   <object class="GtkLabel">
+                    <property name="height-request">30</property>
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
                     <property name="label" translatable="yes">MIC</property>
@@ -383,7 +394,6 @@
                   <object class="GtkScrollbar" id="scrollMic">
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
-                    <property name="orientation">vertical</property>
                     <property name="adjustment">adjustMic</property>
                     <property name="show-fill-level">True</property>
                     <property name="fill-level">100</property>
@@ -407,6 +417,7 @@
                 <property name="can-focus">False</property>
                 <child>
                   <object class="GtkLabel">
+                    <property name="height-request">30</property>
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
                     <property name="label" translatable="yes">PBT-In</property>
@@ -435,7 +446,6 @@
                   <object class="GtkScrollbar" id="scrollPBTI">
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
-                    <property name="orientation">vertical</property>
                     <property name="adjustment">adjustPBTI</property>
                     <property name="show-fill-level">True</property>
                     <property name="fill-level">100</property>
@@ -459,6 +469,7 @@
                 <property name="can-focus">False</property>
                 <child>
                   <object class="GtkLabel">
+                    <property name="height-request">30</property>
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
                     <property name="label" translatable="yes">PBT-Out</property>
@@ -488,7 +499,6 @@
                   <object class="GtkScrollbar" id="scrollPBTO">
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
-                    <property name="orientation">vertical</property>
                     <property name="adjustment">adjustPBTO</property>
                     <property name="show-fill-level">True</property>
                     <property name="fill-level">100</property>
@@ -512,6 +522,7 @@
                 <property name="can-focus">False</property>
                 <child>
                   <object class="GtkLabel">
+                    <property name="height-request">30</property>
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
                     <property name="label" translatable="yes">Notch</property>
@@ -541,7 +552,6 @@
                   <object class="GtkScrollbar" id="toggleNotc">
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
-                    <property name="orientation">vertical</property>
                     <property name="adjustment">adjustNotch</property>
                     <property name="fill-level">3000</property>
                   </object>
@@ -566,6 +576,57 @@
           </packing>
         </child>
         <child>
+          <object class="GtkBox">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <child>
+              <object class="GtkButton" id="btnResetVFO">
+                <property name="label" translatable="yes">Reset VFO</property>
+                <property name="width-request">180</property>
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="receives-default">True</property>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">0</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkLabel" id="lblSWROK">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="label" translatable="yes">SWR NO INIT</property>
+                <property name="width-chars">10</property>
+              </object>
+              <packing>
+                <property name="expand">True</property>
+                <property name="fill">True</property>
+                <property name="position">1</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkLabel" id="lblVFOOK">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="label" translatable="yes">VFO NO INIT</property>
+                <property name="width-chars">10</property>
+              </object>
+              <packing>
+                <property name="expand">True</property>
+                <property name="fill">True</property>
+                <property name="position">2</property>
+              </packing>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">5</property>
+          </packing>
+        </child>
+        <child>
           <object class="GtkToggleButton" id="togglePTT">
             <property name="label" translatable="yes">PTT</property>
             <property name="visible">True</property>
@@ -576,7 +637,7 @@
           <packing>
             <property name="expand">True</property>
             <property name="fill">True</property>
-            <property name="position">5</property>
+            <property name="position">6</property>
           </packing>
         </child>
       </object>

@@ -1,6 +1,7 @@
 
 using System;
 using System.Numerics;
+using System.IO;
 
 namespace DarkHomebrewRadio.Phase
 {
@@ -27,7 +28,7 @@ namespace DarkHomebrewRadio.Phase
                 {
                     continue;
                 }
-                if (i > binEndLow && i < binStartHigh)
+                if (i >= binEndLow && i <= binStartHigh)
                 {
                     kernel[i] = 1.0;
                 }
@@ -36,16 +37,38 @@ namespace DarkHomebrewRadio.Phase
                     int iShift = i - binStartLow;
                     double scale = iShift / (double)lowSpread;
                     kernel[i] = Math.Sin((Math.PI / 2.0) * scale);
+                    //kernel[i] = scale;
                 }
                 if (i > binStartHigh && i < binEndHigh)
                 {
                     int iShift = i - binStartHigh;
                     double scale = iShift / (double)highSpread;
                     kernel[i] = 1.0 - Math.Sin((Math.PI / 2.0) * scale);
+                    //kernel[i] = 1.0 - scale;
                 }
             }
-            kernel[0] = 1.0;
-            kernel[fftSize] = 1.0;
+            //kernel[0] = 1.0;
+            //kernel[fftSize] = 1.0;
+            kernel[0] = 0.0;
+            kernel[fftSize] = 0.0;
+
+            //For checking the filters
+            /*
+            Complex[] inv = new Complex[kernel.Length];
+            for (int i = 0; i < kernel.Length; i++)
+            {
+                inv[i] = kernel[i];
+            }
+            Complex[] kernIFFT = FFT.CalcIFFT(inv);
+            Complex[] kernFFT = FFT.CalcFFT(kernIFFT);
+            using (StreamWriter sw = new StreamWriter("kernfft.csv"))
+            {
+                for (int i = 0; i < kernIFFT.Length; i++)
+                {
+                    sw.WriteLine($"{i},{kernIFFT[i].Magnitude}");
+                }
+            }
+            */
         }
 
         public void Filter(Complex[] inputData)

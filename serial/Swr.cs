@@ -6,10 +6,14 @@ namespace DarkHomebrewRadio.Serial
 {
     public class SerialDriver
     {
-        public Action<double, double> SwrEvent;
+        Action<string> SwrText;
+        Action<double, double> SwrEvent;
         SerialPort sp;
-        public SerialDriver()
+        bool setOk = false;
+        public SerialDriver(Action<string> SwrText, Action<double, double> SwrEvent)
         {
+            this.SwrText = SwrText;
+            this.SwrEvent = SwrEvent;
             string portName = null;
             foreach (string name in SerialPort.GetPortNames())
             {
@@ -21,19 +25,27 @@ namespace DarkHomebrewRadio.Serial
             if (portName != null)
             {
                 sp = new SerialPort(portName, 115200, Parity.None, 8, StopBits.One);
+
                 if (!sp.IsOpen)
                 {
                     sp.Open();
+                    int BytesToRead = sp.BytesToRead;
+                    byte[] discardBuffer = new byte[BytesToRead];
+                    sp.Read(discardBuffer, 0, BytesToRead);
                     sp.DataReceived += SerialData;
+                    SwrText("SWR INIT");
+                    Console.WriteLine($"Serial port INIT, discarded {BytesToRead} bytes.");
                 }
                 else
                 {
+                    SwrText("SWR IN USE");
                     Console.WriteLine("Serial port in use");
                     sp = null;
                 }
             }
             else
             {
+                SwrText("SWR NOT FOUND");
                 Console.WriteLine("Serial port not found");
             }
         }
@@ -59,7 +71,7 @@ namespace DarkHomebrewRadio.Serial
                     //We have to compensate for the diode drops.
                     if (vForward > 0.03)
                     {
-                        vForward += 0.6;
+                        vForward += 0.4;
                     }
                     else
                     {
@@ -69,7 +81,7 @@ namespace DarkHomebrewRadio.Serial
                     //We have to compensate for the diode drops.
                     if (vReflected > 0.03)
                     {
-                        vReflected += 0.6;
+                        vReflected += 0.4;
                     }
                     else
                     {
@@ -78,11 +90,24 @@ namespace DarkHomebrewRadio.Serial
                     //Multiply for N=10 transformers
                     vForward *= 10.0;
                     vReflected *= 10.0;
-                    if (SwrEvent != null)
+                    if (!setOk)
                     {
-                        SwrEvent(vForward, vReflected);
+                        setOk = true;
+                        SwrText("SWR OK");
                     }
+                    SwrEvent(vForward, vReflected);
                 }
+            }
+        }
+
+
+        public void Stop()
+        {
+            if (sp.IsOpen)
+            {
+                sp.DataReceived -= SerialData;
+                sp.Close();
+                sp.Dispose();
             }
         }
     }

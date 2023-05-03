@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Numerics;
 using System.Threading;
@@ -26,11 +27,23 @@ namespace DarkHomebrewRadio.Phase
         AutoResetEvent fftARE = new AutoResetEvent(false);
         Thread ifftThread;
         AutoResetEvent ifftARE = new AutoResetEvent(false);
-        public Action<Complex[]> audioFilter;
+        Dictionary<int, AudioFilter> filters = new Dictionary<int, AudioFilter>();
+        Action<Complex[]> audioFilter;
         public Action<double> alcEvent;
+        public TransmitMode mode = TransmitMode.LSB;
+        double micgain = 1;
+        Options options;
 
-        public PhaseSplitter()
+
+        public PhaseSplitter(Options options)
         {
+            this.options = options;
+            filters[2000] = new AudioFilter(48000, SAMPLES_PER_FFT, 500, 550, 2450, 2500);
+            filters[2400] = new AudioFilter(48000, SAMPLES_PER_FFT, 300, 350, 2650, 2700);
+            filters[3000] = new AudioFilter(48000, SAMPLES_PER_FFT, 50, 100, 2950, 3000);
+            filters[3500] = new AudioFilter(48000, SAMPLES_PER_FFT, 50, 100, 3450, 3500);
+            filters[8000] = new AudioFilter(48000, SAMPLES_PER_FFT, 50, 100, 7950, 8000);
+            audioFilter = filters[3000].Filter;
             fftThread = new Thread(new ThreadStart(FFTThread));
             fftThread.Start();
             ifftThread = new Thread(new ThreadStart(IFFTThread));
@@ -73,7 +86,7 @@ namespace DarkHomebrewRadio.Phase
             if (transmit && !isTransmitting)
             {
                 //Give us some headroom
-                if (outputBuffers.Count > 0)
+                if (outputBuffers.Count > 2)
                 {
                     isTransmitting = true;
                 }
@@ -108,10 +121,20 @@ namespace DarkHomebrewRadio.Phase
             ifftThread.Join();
         }
 
-        public void UpdateTransmit(object sender, EventArgs args)
+        public void UpdateTransmit(bool transmit)
         {
-            ToggleButton toggle = sender as ToggleButton;
-            transmit = toggle.Active;
+            this.transmit = transmit;
+        }
+
+        public void UpdateMode(TransmitMode mode, int bandwidth)
+        {
+            this.mode = mode;
+            audioFilter = filters[bandwidth].Filter;
+        }
+
+        public void MicEvent(double value)
+        {
+            micgain = value;
         }
 
         private void FFTThread()
@@ -169,6 +192,9 @@ namespace DarkHomebrewRadio.Phase
         private void IFFTThread()
         {
             Complex[] lastIFFT = new Complex[SAMPLES_PER_FFT * 2];
+            //Optional phase shift
+            double phaseRadians = (options.phaseAdjust / 360.0) * Math.Tau;
+            Complex phaseAdjust = new Complex(Math.Cos(phaseRadians), Math.Sin(phaseRadians));
             while (running)
             {
                 ifftARE.WaitOne(100);
@@ -185,13 +211,27 @@ namespace DarkHomebrewRadio.Phase
                         Complex fromPoint = lastIFFT[i + SAMPLES_PER_FFT] * (1.0 - scale);
                         Complex toPoint = ifft[i] * scale;
                         Complex combined = fromPoint + toPoint;
-                        double magnitude = combined.Magnitude;
+                        Complex combinedShifted = combined * phaseAdjust;
+                        double magnitude = combined.Magnitude * micgain;
                         if (magnitude > newAlc)
                         {
                             newAlc = magnitude;
                         }
-                        outputData[i * 2] = combined.Real;
-                        outputData[i * 2 + 1] = combined.Imaginary;
+                        if (mode == TransmitMode.USB)
+                        {
+                            outputData[i * 2] = combined.Real * micgain * options.leftAmplitude;
+                            outputData[i * 2 + 1] = combinedShifted.Imaginary * micgain;
+                        }
+                        if (mode == TransmitMode.LSB)
+                        {
+                            outputData[i * 2] = combinedShifted.Imaginary * micgain * options.leftAmplitude;
+                            outputData[i * 2 + 1] = combined.Real * micgain;
+                        }
+                        if (mode == TransmitMode.DSB)
+                        {
+                            outputData[i * 2] = combined.Real * micgain * 1.5;
+                            outputData[i * 2 + 1] = 0.0;
+                        }
                     }
                     if (alcEvent != null)
                     {
@@ -202,5 +242,11 @@ namespace DarkHomebrewRadio.Phase
                 }
             }
         }
+    }
+    public enum TransmitMode
+    {
+        LSB,
+        USB,
+        DSB,
     }
 }
