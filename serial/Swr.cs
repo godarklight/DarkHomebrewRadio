@@ -1,5 +1,6 @@
 using System;
 using System.IO.Ports;
+using System.Threading;
 
 
 namespace DarkHomebrewRadio.Serial
@@ -97,17 +98,25 @@ namespace DarkHomebrewRadio.Serial
                     }
                     SwrEvent(vForward, vReflected);
                 }
+                Thread.Sleep(1);
             }
         }
 
 
         public void Stop()
         {
-            if (sp.IsOpen)
+            try
             {
-                sp.DataReceived -= SerialData;
-                sp.Close();
-                sp.Dispose();
+                if (sp.IsOpen)
+                {
+                    sp.DataReceived -= SerialData;
+                    sp.Close();
+                    sp.Dispose();
+                }
+            }
+            catch
+            {
+                //Don't care
             }
         }
     }

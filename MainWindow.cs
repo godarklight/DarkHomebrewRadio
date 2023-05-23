@@ -21,7 +21,9 @@ namespace DarkHomebrewRadio
         [UI] private Label lblSWR = null;
         [UI] private ProgressBar progressALC = null;
         [UI] private Label lblALC = null;
+        [UI] private ProgressBar progressMIC = null;
         [UI] private Label lblMIC = null;
+        [UI] private Label lblMICGain = null;
         [UI] private Scrollbar scrollMic = null;
         [UI] private Label lblPBTI = null;
         [UI] private Scrollbar scrollPBTI = null;
@@ -32,12 +34,14 @@ namespace DarkHomebrewRadio
         [UI] private Button btnResetVFO = null;
         [UI] private Label lblSWROK = null;
         [UI] private Label lblVFOOK = null;
+        [UI] private ToggleButton toggleCompress = null;
         [UI] private ToggleButton togglePTT = null;
         public event Action<bool> pttEvent;
         public event Action<double> vfoEvent = null;
         public event System.Action vfoResetEvent = null;
         public event Action<TransmitMode, int> modeEvent = null;
         public event Action<double> micChangedEvent = null;
+        public event Action<bool> compressEvent = null;
         double lastKhz = 7132.0;
         int modeInt = 0;
         int[] bandwidths = new int[] { 2000, 2400, 3000, 3500, 8000 };
@@ -60,6 +64,7 @@ namespace DarkHomebrewRadio
             btnBandwidth.Clicked += bandwidthClicked;
             btnResetVFO.Clicked += vfoResetClicked;
             scrollMic.ValueChanged += MicChanged;
+            toggleCompress.Toggled += toggleCompress_Toggled;
         }
 
         private void Window_DeleteEvent(object sender, DeleteEventArgs a)
@@ -71,6 +76,11 @@ namespace DarkHomebrewRadio
         {
             vfoChanged(sender, a);
             pttEvent(togglePTT.Active);
+        }
+
+        private void toggleCompress_Toggled(object sender, EventArgs a)
+        {
+            compressEvent(toggleCompress.Active);
         }
 
         private void modeClicked(object sender, EventArgs a)
@@ -127,17 +137,17 @@ namespace DarkHomebrewRadio
             }
             if (lastKhz != newKhz)
             {
+                Console.WriteLine($"Tuning to {newKhz}");
                 lastKhz = newKhz;
-
                 vfoEvent(newKhz * 1000);
             }
         }
 
         private void MicChanged(object sender, EventArgs a)
         {
-            double dbToGain = Math.Pow(10, scrollMic.Value / 10.0);
+            double dbToGain = Math.Pow(10, scrollMic.Value / 20.0);
             micChangedEvent(dbToGain);
-            lblMIC.Text = $"{scrollMic.Value.ToString("N2")}db";
+            lblMICGain.Text = $"{scrollMic.Value.ToString("N2")}db";
         }
 
 
@@ -148,10 +158,12 @@ namespace DarkHomebrewRadio
             vfoChanged(sender, a);
         }
 
-        public void ALCEvent(double newAlc)
+        public void ALCEvent(double newMic, double newAlc)
         {
             Application.Invoke((object o, EventArgs e) =>
                 {
+                    lblMIC.Text = (newMic * 100).ToString("N0") + "%";
+                    progressMIC.Fraction = newMic;
                     lblALC.Text = (newAlc * 100).ToString("N0") + "%";
                     progressALC.Fraction = newAlc;
                 }

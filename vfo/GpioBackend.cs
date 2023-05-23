@@ -18,6 +18,7 @@ namespace DarkHomebrewRadio.Vfo
         GpioDriver gpiod1;
         GpioController gpioc0;
         GpioController gpioc1;
+        int txpin = 0;
         int[] addrMap = new int[6];
         int[] dataMap = new int[8];
         int resetPin;
@@ -62,6 +63,7 @@ namespace DarkHomebrewRadio.Vfo
             gpiod1 = new LibGpiodDriver(1);
             gpioc0 = new GpioController(PinNumberingScheme.Logical, gpiod0);
             gpioc1 = new GpioController(PinNumberingScheme.Logical, gpiod1);
+            txpin = 65;
             addrMap[0] = 82;
             addrMap[1] = 83;
             addrMap[2] = 70;
@@ -86,6 +88,8 @@ namespace DarkHomebrewRadio.Vfo
         private void ConfigurePins()
         {
             init = true;
+            //Tx pin
+            OpenPin(txpin, PinMode.Output);
             //Address pins
             for (int i = 0; i < addrMap.Length; i++)
             {
@@ -174,6 +178,11 @@ namespace DarkHomebrewRadio.Vfo
             }
 
             return value;
+        }
+
+        public void SetTXPin(bool transmit)
+        {
+            SetPinValue(txpin, transmit ? PinValue.High : PinValue.Low);
         }
 
         public void SetRegister(AD9854Registers addr, int value)

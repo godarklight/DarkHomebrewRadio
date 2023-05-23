@@ -33,6 +33,7 @@ namespace DarkHomebrewRadio
             app.AddWindow(win);
 
             win.Show();
+            win.compressEvent += splitter.UpdateCompress;
             win.pttEvent += splitter.UpdateTransmit;
             splitter.alcEvent = win.ALCEvent;
             if (options.swrEnabled)

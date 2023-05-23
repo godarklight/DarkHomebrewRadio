@@ -57,6 +57,7 @@ namespace DarkHomebrewRadio.Vfo
                 controller.Powerdown();
                 UpdateVFOOK("VFO OFF");
             }
+            backend.SetTXPin(transmit);
         }
 
         public void Stop()
